@@ -35,7 +35,7 @@ namespace detail
 	template <typename T>
 	constexpr void conditional_swap(bool condition, T& lhs, T& rhs)
 	{
-		if constexpr (std::is_trivial<T>)
+		if constexpr (std::is_trivial_v<T>)
 		{
 			T tmp = lhs;
 			if (condition)
@@ -191,7 +191,6 @@ namespace detail
 	constexpr void grail_sort_entry_point(T* array, U size, T* external_buffer, U external_buffer_size)
 	{
 		U block_size = 16;
-
 		while (block_size * block_size < size)
 			block_size *= 2;
 
