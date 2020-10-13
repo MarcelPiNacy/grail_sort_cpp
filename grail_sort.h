@@ -9,7 +9,7 @@ namespace detail
 	template <typename T>
 	constexpr void construct(T& object)
 	{
-		new (object) T();
+		new (&object) T();
 	}
 
 	template <typename T, typename...U>
