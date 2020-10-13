@@ -379,42 +379,42 @@ namespace grail_sort
 		switch (options.buffer_type)
 		{
 		case buffer_type::STATIC:
-		{
-			constexpr size_t K = STATIC_BUFFER_SIZE;
-			T buffer[K];
-			detail::grail_sort_entry_point(array, size, buffer, K);
-		}
-		break;
+			{
+				constexpr size_t K = STATIC_BUFFER_SIZE;
+				T buffer[K];
+				detail::grail_sort_entry_point(array, size, buffer, K);
+			}
+			break;
 		case buffer_type::NONE:
 			detail::grail_sort_entry_point(array, size, nullptr, 0);
 			break;
 		case buffer_type::DYNAMIC:
-		{
-			assert(options.dynamic_buffer_options != nullptr);
-			
-			const size_t buffer_size = options.dynamic_buffer_options->buffer_size;
-			const size_t allocation_size = buffer_size * sizeof(T);
-
-			if (options.dynamic_buffer_options->allocate != nullptr)
 			{
-				T* const buffer = options.dynamic_buffer_options->allocate(allocation_size);
-				assert(buffer != nullptr);
+				assert(options.dynamic_buffer_options != nullptr);
+				
+				const size_t buffer_size = options.dynamic_buffer_options->buffer_size;
+				const size_t allocation_size = buffer_size * sizeof(T);
 
-				detail::grail_sort_entry_point(array, size, buffer, buffer_size);
+				if (options.dynamic_buffer_options->allocate != nullptr)
+				{
+					T* const buffer = options.dynamic_buffer_options->allocate(allocation_size);
+					assert(buffer != nullptr);
 
-				options.dynamic_buffer_options->deallocate(buffer, allocation_size);
+					detail::grail_sort_entry_point(array, size, buffer, buffer_size);
+
+					options.dynamic_buffer_options->deallocate(buffer, allocation_size);
+				}
+				else
+				{
+					T* const buffer = malloc(buffer_size);
+					assert(buffer != nullptr);
+
+					detail::grail_sort_entry_point(array, size, buffer, buffer_size);
+
+					free(buffer);
+				}
 			}
-			else
-			{
-				T* const buffer = malloc(buffer_size);
-				assert(buffer != nullptr);
-
-				detail::grail_sort_entry_point(array, size, buffer, buffer_size);
-
-				free(buffer);
-			}
-		}
-		break;
+			break;
 		default:
 			assert(false);
 			break;
