@@ -7,7 +7,7 @@
 
 namespace grail_sort::detail::introspection
 {
-	enum
+	enum : uint32_t
 	{
 		binary_search_threshold_fundamental_type_multiplier = 2,
 	};
