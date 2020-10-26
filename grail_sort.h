@@ -33,6 +33,18 @@
 
 
 
+#ifdef _MSVC_LANG
+
+#define GRAILSORT_ASSUME(expression) __assume((expression))
+
+#else
+
+#define GRAILSORT_ASSUME(expression)
+
+#endif
+
+
+
 #if (defined(_DEBUG) || !defined(NDEBUG)) && !defined(GRAILSORT_DEBUG)
 #include <cassert>
 
@@ -60,6 +72,12 @@ namespace grail_sort
 {
 	namespace detail
 	{
+
+		/*
+			Type info:
+				- Iterator: A random access iterator type.
+				- Int: A signed integer type.
+		*/
 
 		template <typename T>
 		constexpr int compare(const T& left, const T& right) GRAILSORT_NOTHROW
@@ -144,7 +162,7 @@ namespace grail_sort
 			while (low < high - 1)
 			{
 				const Int p = low + (high - low) / 2;
-				const bool flag = array[p] >= *key;
+				const bool flag = *(array + p) >= *key;
 				if (flag)
 					high = p;
 				else
@@ -161,7 +179,7 @@ namespace grail_sort
 			while (low < high - 1)
 			{
 				const Int p = low + (high - low) / 2;
-				const bool flag = array[p] > *key;
+				const bool flag = *(array + p) > *key;
 				if (flag)
 					high = p;
 				else
@@ -178,7 +196,7 @@ namespace grail_sort
 			for (Int i = 1; i < size && h < desired_key_count; ++i)
 			{
 				const Int p = lower_bound(array + h0, h, array + i);
-				if (p == h || array[i] != array[h0 + p])
+				if (p == h || *(array + i) != *(array + (h0 + p)))
 				{
 					rotate(array + h0, h, i - (h0 + h));
 					h0 = i - h;
@@ -212,7 +230,7 @@ namespace grail_sort
 				{
 					++array;
 					--left_size;
-				} while (left_size != 0 && *array <= array[left_size]);
+				} while (left_size != 0 && *array <= *(array + left_size));
 			}
 		}
 
@@ -236,7 +254,7 @@ namespace grail_sort
 				do
 				{
 					--right_size;
-				} while (right_size != 0 && array[left_size - 1] <= array[left_size + right_size - 1]);
+				} while (right_size != 0 && *(array + (left_size - 1)) <= *(array + (left_size + right_size - 1)));
 			}
 		}
 
@@ -262,17 +280,17 @@ namespace grail_sort
 			
 			while (p1 < right_size)
 			{
-				if (p0 == left_size || array[p0] > array[p1])
+				if (p0 == left_size || *(array + p0) > * (array + p1))
 				{
-					swap(array[m], array[p1]);
 					++m;
 					++p1;
+					swap(*(array + m), *(array + p1));
 				}
 				else
 				{
-					swap(array[m], array[p0]);
 					++m;
 					++p0;
+					swap(*(array + m), *(array + p0));
 				}
 			}
 
@@ -291,17 +309,17 @@ namespace grail_sort
 
 			while (p1 >= 0)
 			{
-				if (p2 < left_size || array[p1] > array[p2])
+				if (p2 < left_size || *(array + p1) > * (array + p2))
 				{
-					swap(array[p0], array[p1]);
 					--p0;
 					--p1;
+					swap(*(array + p0), *(array + p1));
 				}
 				else
 				{
-					swap(array[p0], array[p2]);
 					--p0;
 					--p2;
+					swap(*(array + p0), *(array + p2));
 				}
 			}
 
@@ -309,9 +327,9 @@ namespace grail_sort
 			{
 				while (p2 >= left_size)
 				{
-					swap(array[p0], array[p2]);
 					--p0;
 					--p2;
+					swap(*(array + p0), *(array + p2));
 				}
 			}
 		}
@@ -328,17 +346,17 @@ namespace grail_sort
 
 			while (p1 < q1 && p2 < q2)
 			{
-				if (compare(array[p1], array[p2]) - type < 0)
+				if (compare(*(array + p1), *(array + p2)) - type < 0)
 				{
-					swap(array[p0], array[p1]);
 					++p0;
 					++p1;
+					swap(*(array + p0), *(array + p1));
 				}
 				else
 				{
-					swap(array[p0], array[p2]);
 					++p0;
 					++p2;
+					swap(*(array + p0), *(array + p2));
 				}
 			}
 
@@ -347,9 +365,9 @@ namespace grail_sort
 				ref_left_size = q1 - p1;
 				while (p1 < q1)
 				{
-					swap(array[q1], array[q2]);
 					--q1;
 					--q2;
+					swap(*(array + q1), *(array + q2));
 				}
 			}
 			else
@@ -367,7 +385,7 @@ namespace grail_sort
 
 			Int l1 = ref_left_size;
 			Int type = 1 - ref_type;
-			if (l1 != 0 && (compare(array[l1 - 1], array[l1]) - type) >= 0)
+			if (l1 != 0 && (compare(*(array + (l1 - 1)), *(array + l1)) - type) >= 0)
 			{
 				while (l1 != 0)
 				{
@@ -392,7 +410,7 @@ namespace grail_sort
 					{
 						++array;
 						--l1;
-					} while (l1 != 0 && compare(*array, array[l1]) - type < 0);
+					} while (l1 != 0 && compare(*array, *(array + l1)) - type < 0);
 				}
 			}
 			ref_left_size = right_size;
@@ -408,15 +426,15 @@ namespace grail_sort
 
 			while (p1 < right_size)
 			{
-				if (p0 == left_size || array[p0] > array[p1])
+				if (p0 == left_size || *(array + p0) > * (array + p1))
 				{
-					move_construct(array[m], array[p1]);
+					move_construct(*(array + m), *(array + p1));
 					++m;
 					++p1;
 				}
 				else
 				{
-					move_construct(array[m], array[p0]);
+					move_construct(*(array + m), *(array + p0));
 					++m;
 					++p0;
 				}
@@ -425,7 +443,7 @@ namespace grail_sort
 				{
 					while (p0 < left_size)
 					{
-						move_construct(array[m], array[p0]);
+						move_construct(*(array + m), *(array + p0));
 						++m;
 						++p0;
 					}
@@ -444,15 +462,15 @@ namespace grail_sort
 			Int type = 1 - ref_type;
 			while (p1 < q1 && p2 < q2)
 			{
-				if (compare(array[p0], array[p1]) - type < 0)
+				if (compare(*(array + p0), *(array + p1)) - type < 0)
 				{
-					move_construct(array[p0], array[p1]);
+					move_construct(*(array + p0), *(array + p1));
 					++p0;
 					++p1;
 				}
 				else
 				{
-					move_construct(array[p0], array[p2]);
+					move_construct(*(array + p0), *(array + p2));
 					++p0;
 					++p2;
 				}
@@ -463,7 +481,7 @@ namespace grail_sort
 				ref_left_size = q1 - p1;
 				while (p1 < q1)
 				{
-					move_construct(array[q2], array[q1]);
+					move_construct(*(array + q2), *(array + q1));
 					--q2;
 					--q1;
 				}
@@ -491,7 +509,7 @@ namespace grail_sort
 			for (Int i = 1; i < block_count; ++i)
 			{
 				Int prest = p - lrest;
-				Int fnext = (Int)!(keys[i] < *median);
+				Int fnext = (Int)!(*(keys + i) < *median);
 				if (fnext == frest)
 				{
 					block_move(array + prest - block_size, array + prest, lrest);
@@ -555,7 +573,7 @@ namespace grail_sort
 			for (Int i = 1; i < block_count; ++i)
 			{
 				Int prest = p - lrest;
-				Int fnext = (Int)!(keys[i] < *median);
+				Int fnext = (Int)!(*(keys + i) < *median);
 				if (fnext == frest)
 				{
 					if (has_buffer)
@@ -641,14 +659,14 @@ namespace grail_sort
 
 				for (Int j = 1; j < size; j += 2)
 				{
-					const bool flag = array[j - 1] > array[j];
-					move_construct(array[j - 3], array[j - 1 + (Int)flag]);
-					move_construct(array[j - 2], array[j - (Int)flag]);
+					const bool flag = *(array + (j - 1)) > *(array + j);
+					move_construct(*(array + (j - 3)), *(array + (j - 1 + (Int)flag)));
+					move_construct(*(array + (j - 2)), *(array + (j - (Int)flag)));
 				}
 
 				if ((size & 1) != 0)
 				{
-					move_construct(array[size - 3], array[size - 1]);
+					move_construct(*(array + (size - 3)), *(array + (size - 1)));
 				}
 
 				array -= 2;
@@ -673,7 +691,7 @@ namespace grail_sort
 					{
 						while (offset < size)
 						{
-							move_construct(array[offset - i], array[offset]);
+							move_construct(*(array + (offset - i)), *(array + offset));
 							++offset;
 						}
 					}
@@ -686,14 +704,14 @@ namespace grail_sort
 			{
 				for (Int j = 1; j < size; j += 2)
 				{
-					Int u = (Int)(array[j - 1] > array[j]);
-					swap(array[j - 3], array[j - 1 + u]);
-					swap(array[j - 2], array[j - u]);
+					Int u = (Int)(*(array + (j - 1)) > *(array + j));
+					swap(*(array + (j - 3)), *(array + (j - 1 + u)));
+					swap(*(array + (j - 2)), *(array + (j - u)));
 				}
 
 				if ((size & 1) != 0)
 				{
-					swap(array[size - 1], array[size - 3]);
+					swap(*(array + (size - 1)), *(array + (size - 3)));
 				}
 
 				array -= 2;
@@ -747,13 +765,15 @@ namespace grail_sort
 		template <typename Iterator, typename Int>
 		constexpr void insertion_sort_classic(Iterator array, Int size) GRAILSORT_NOTHROW
 		{
+			GRAILSORT_ASSUME(size < 8);
+
 			for (Int i = 1; i < size; ++i)
 			{
 				Int j = i - 1;
-				auto tmp = std::move(array[i]);
-				for (; j >= 0 && array[j] > tmp; --j)
-					move_construct(array[j + 1], array[j]);
-				move_construct(array[j + 1], tmp);
+				auto tmp = std::move(*(array + i));
+				for (; j >= 0 && *(array + j) > tmp; --j)
+					move_construct(*(array + (j + 1)), *(array + j));
+				move_construct(*(array + (j + 1)), tmp);
 			}
 		}
 
@@ -764,19 +784,19 @@ namespace grail_sort
 				return insertion_sort_classic(array, size);
 			Int min = 0;
 			for (Int i = 1; i < size; ++i)
-				if (array[i] < array[min])
+				if (*(array + i) < *(array + min))
 					min = i;
-			auto tmp = std::move(array[min]);
+			auto tmp = std::move(*(array + min));
 			for (Int i = min; i > 0; --i)
-				move_construct(array[i], array[i - 1]);
-			move_construct(array[0], tmp);
+				move_construct(*(array + i), *(array + i - 1));
+			move_construct(*array, tmp);
 			for (Int i = 1; i < size; ++i)
 			{
 				Int j = i - 1;
-				auto tmp = std::move(array[i]);
-				for (; array[j] > tmp; --j)
-					move_construct(array[j + 1], array[j]);
-				move_construct(array[j + 1], tmp);
+				auto tmp = std::move(*(array + i));
+				for (; *(array + j) > tmp; --j)
+					move_construct(*(array + j + 1), *(array + j));
+				move_construct(*(array + j + 1), tmp);
 			}
 		}
 
@@ -785,13 +805,13 @@ namespace grail_sort
 		{
 			for (Int i = 1; i < size; ++i)
 			{
-				if (array[i] < array[0])
-					swap(array[0], array[i]);
-				auto tmp = std::move(array[i]);
+				if (*(array + i) < *array)
+					swap(*array, *(array + i));
+				auto tmp = std::move(*(array + i));
 				Int j = i - 1;
-				for (; array[j] > tmp; --j)
-					move_construct(array[j + 1], array[j]);
-				move_construct(array[j + 1], tmp);
+				for (; *(array + j) > tmp; --j)
+					move_construct(*(array + j + 1), *(array + j));
+				move_construct(*(array + j + 1), tmp);
 			}
 		}
 
@@ -799,8 +819,8 @@ namespace grail_sort
 		constexpr void lazy_merge_sort(Iterator array, Int size) GRAILSORT_NOTHROW
 		{
 			for (Int i = 1; i < size; i += 2)
-				if (array[i - 1] > array[i])
-					swap(array[i - 1], array[i]);
+				if (*(array + i - 1) > *(array + i))
+					swap(*(array + i - 1), *(array + i));
 
 			for (Int i = 2; i < size;)
 			{
@@ -842,10 +862,7 @@ namespace grail_sort
 				if (flag && lrest == 0)
 					break;
 				
-				Int bk = ll2;
-				if (flag)
-					bk = lrest;
-				bk /= block_size;
+				const Int bk = (flag ? lrest : ll2) / block_size;
 				
 				insertion_sort_stable(keys, bk + (Int)flag);
 				
@@ -858,39 +875,36 @@ namespace grail_sort
 					Int p = p0;
 					for (Int v = u; v < bk; ++v)
 					{
-						const auto cmp = compare(ptr[p * block_size], ptr[v * block_size]);
-						if (cmp > 0 || (cmp == 0 && keys[p] > keys[v]))
+						const auto cmp = compare(*(ptr + p * block_size), *(ptr + v * block_size));
+						if (cmp > 0 || (cmp == 0 && *(keys + p) > * (keys + v)))
 							p = v;
 					}
 
 					if (p != p0)
 					{
 						block_swap(ptr + p0 * block_size, ptr + p * block_size, block_size);
-						swap(keys[p0], keys[p]);
+						swap(*(keys + p0), *(keys + p));
 						if (median == p0 || median == p)
 							median ^= p0 ^ p;
 					}
 				}
 
 				Int bk2 = 0;
-				Int llast = 0;
+				const Int last = flag ? lrest % block_size : 0;
 
-				if (flag)
-					llast = lrest % block_size;
-
-				if (llast != 0)
+				if (last != 0)
 				{
-					while (bk2 < bk && ptr[bk * block_size] < ptr[(bk - bk2 - 1) * block_size])
+					while (bk2 < bk && *(ptr + bk * block_size) < *(ptr + (bk - bk2 - 1) * block_size))
 						++bk2;
 				}
 
 				if (external_buffer != nil_iterator)
 				{
-					merge_buffers_left_using_external_buffer(ptr, keys, keys + median, bk - bk2, block_size, bk2, llast);
+					merge_buffers_left_using_external_buffer(ptr, keys, keys + median, bk - bk2, block_size, bk2, last);
 				}
 				else
 				{
-					merge_buffers_left(ptr, keys, keys + median, bk - bk2, block_size, has_buffer, bk2, llast);
+					merge_buffers_left(ptr, keys, keys + median, bk - bk2, block_size, has_buffer, bk2, last);
 				}
 			}
 
@@ -899,7 +913,7 @@ namespace grail_sort
 			{
 				while (size >= 0)
 				{
-					move_construct(array[size], array[size - block_size]);
+					move_construct(*(array + size), *(array + size - block_size));
 					--size;
 				}	
 
@@ -909,7 +923,7 @@ namespace grail_sort
 			{
 				while (size >= 0)
 				{
-					swap(array[size], array[size - block_size]);
+					swap(*(array + size), *(array + size - block_size));
 					--size;
 				}
 			}
@@ -1013,8 +1027,8 @@ namespace grail_sort
 	}
 
 	template <typename Iterator, typename Int = ptrdiff_t>
-	constexpr void sort(Iterator array, Int size) GRAILSORT_NOTHROW
+	constexpr void sort(Iterator begin, Iterator end) GRAILSORT_NOTHROW
 	{
-		detail::entry_point<Iterator, Int>(array, size, Iterator(), 0);
+		detail::entry_point<Iterator, Int>(begin, std::distance(begin, end), Iterator(), 0);
 	}
 }
