@@ -579,11 +579,10 @@ namespace grail_sort
 				p += block_size;
 			}
 
-			const Int bk2 = block_size * block_count_2;
-
 			prest = p - lrest;
 			if (last != 0)
 			{
+				const Int bk2 = block_size * block_count_2;
 				Int plast = p + bk2;
 				if (frest != 0)
 				{
@@ -614,7 +613,7 @@ namespace grail_sort
 			{
 				if (has_buffer)
 				{
-					block_swap(array + prest, array + prest - block_size, lrest);
+					block_swap(array + prest, array + (prest - block_size), lrest);
 				}
 			}
 		}
@@ -903,6 +902,7 @@ namespace grail_sort
 					move_construct(array[size], array[size - block_size]);
 					--size;
 				}	
+
 				block_move(array - block_size, external_buffer, block_size);
 			}
 			else if (has_buffer)
