@@ -36,7 +36,8 @@ namespace grail_sort
 	template <typename Iterator, typename Int = ptrdiff_t>
 	constexpr void sort(Iterator begin, Iterator end) GRAILSORT_NOTHROW
 	{
-		detail::entry_point<Iterator, Int>(begin, std::distance(begin, end), Iterator(), 0);
+		const auto size = std::distance(begin, end);
+		detail::entry_point<Iterator, Int, false>(begin, size, Iterator(), 0);
 	}
 
 	/// <summary>
@@ -45,6 +46,8 @@ namespace grail_sort
 	template <typename Iterator, typename Int = ptrdiff_t>
 	constexpr void sort(Iterator begin, Iterator end, Iterator external_buffer_begin, Iterator external_buffer_end) GRAILSORT_NOTHROW
 	{
-		detail::entry_point<Iterator, Int>(begin, std::distance(begin, end), external_buffer_begin, std::distance(external_buffer_begin, external_buffer_end));
+		const auto size = std::distance(begin, end);
+		const auto buffer_size = std::distance(external_buffer_begin, external_buffer_end);
+		detail::entry_point<Iterator, Int, true>(begin, size, external_buffer_begin, buffer_size);
 	}
 }

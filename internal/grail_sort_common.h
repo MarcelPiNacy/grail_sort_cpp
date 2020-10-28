@@ -18,7 +18,7 @@ namespace grail_sort::detail
 			{
 				rotate(begin + first_key, found_count, i - (first_key + found_count));
 				first_key = i - found_count;
-				rotate(begin + (first_key + target), found_count - target, 1);
+				rotate_single<Iterator, Int>(begin + (first_key + target), found_count - target);
 				++found_count;
 			}
 		}
@@ -101,15 +101,14 @@ namespace grail_sort::detail
 			if (left_offset == left_size || *(begin + left_offset) > * (begin + right_offset))
 			{
 				swap(*(begin + internal_buffer_offset), *(begin + right_offset));
-				++internal_buffer_offset;
 				++right_offset;
 			}
 			else
 			{
 				swap(*(begin + internal_buffer_offset), *(begin + left_offset));
-				++internal_buffer_offset;
 				++left_offset;
 			}
+			++internal_buffer_offset;
 		}
 
 		if (internal_buffer_offset != left_offset)
@@ -205,15 +204,15 @@ namespace grail_sort::detail
 		{
 			while (left_size != 0)
 			{
-				const Int h = type ?
+				const Int target = type ?
 					lower_bound(begin + left_size, right_size, begin) :
 					upper_bound(begin + left_size, right_size, begin);
 
-				if (h != 0)
+				if (target != 0)
 				{
-					rotate(begin, left_size, h);
-					begin += h;
-					right_size -= h;
+					rotate(begin, left_size, target);
+					begin += target;
+					right_size -= target;
 				}
 
 				if (right_size == 0)
@@ -316,14 +315,14 @@ namespace grail_sort::detail
 			return merge_forward_using_external_buffer(begin, block_count_2 * block_size, last, -block_size);
 
 		Int lrest = block_size;
-		Int frest = (Int)!(*keys < *median);
+		Int type = (Int)!(*keys < *median);
 		Int current_block_offset = block_size;
 
 		for (Int current_block = 1; current_block < block_count; ++current_block)
 		{
 			Int prest = current_block_offset - lrest;
 			Int fnext = (Int)!(*(keys + current_block) < *median);
-			if (fnext == frest)
+			if (fnext == type)
 			{
 				block_move(begin + (prest - block_size), begin + prest, lrest);
 				prest = current_block_offset;
@@ -331,7 +330,7 @@ namespace grail_sort::detail
 			}
 			else
 			{
-				smart_merge_using_external_buffer(begin + prest, lrest, frest, block_size, block_size);
+				smart_merge_using_external_buffer(begin + prest, lrest, type, block_size, block_size);
 			}
 
 			current_block_offset += block_size;
@@ -341,12 +340,12 @@ namespace grail_sort::detail
 		if (last != 0)
 		{
 			Int plast = current_block_offset + block_size * block_count_2;
-			if (frest != 0)
+			if (type != 0)
 			{
 				block_move(begin + (prest - block_size), begin + prest, lrest);
 				prest = current_block_offset;
 				lrest = block_size * block_count_2;
-				frest = 0;
+				type = 0;
 			}
 			else
 			{
@@ -449,7 +448,7 @@ namespace grail_sort::detail
 		}
 	}
 
-	template <typename Iterator, typename Int>
+	template <typename Iterator, typename Int, bool DisableExternalBuffer>
 	constexpr void build_blocks(Iterator begin, Int size, Int internal_buffer_size, Iterator external_buffer, Int external_buffer_size) GRAILSORT_NOTHROW
 	{
 		Int buffer_size = external_buffer_size;
@@ -576,19 +575,19 @@ namespace grail_sort::detail
 	}
 
 	template <typename Iterator, typename Int>
-	constexpr void combine_blocks(Iterator begin, Iterator keys, Int size, Int ll, Int block_size, bool has_buffer, Iterator external_buffer) GRAILSORT_NOTHROW
+	constexpr void combine_blocks(Iterator begin, Iterator keys, Int size, Int range_size, Int block_size, bool has_buffer, Iterator external_buffer) GRAILSORT_NOTHROW
 	{
 		const auto nil_iterator = Iterator();
 
-		const Int ll2 = ll * 2;
-		Int m = size / ll2;
-		Int lrest = size % ll2;
-		Int key_count = ll2 / block_size;
+		const Int merged_size = range_size * 2;
+		Int block_count = size / merged_size;
+		Int rest = size % merged_size;
+		Int key_count = merged_size / block_size;
 
-		if (lrest <= ll)
+		if (rest <= range_size)
 		{
-			size -= lrest;
-			lrest = 0;
+			size -= rest;
+			rest = 0;
 		}
 
 		if (external_buffer != nil_iterator)
@@ -596,55 +595,55 @@ namespace grail_sort::detail
 			block_move(external_buffer, begin - block_size, block_size);
 		}
 
-		for (Int i = 0; i <= m; ++i)
+		for (Int i = 0; i <= block_count; ++i)
 		{
-			const bool flag = i == m;
-			if (flag && lrest == 0)
+			const bool flag = i == block_count;
+			if (flag && rest == 0)
 				break;
 
-			const Int bk = (flag ? lrest : ll2) / block_size;
+			const Int count = (flag ? rest : merged_size) / block_size;
 
-			insertion_sort_unstable(keys, bk + (Int)flag);
+			insertion_sort_unstable(keys, count + (Int)flag);
 
-			Int median = ll / block_size;
-			const Iterator begin2 = begin + i * ll2;
+			Int median = range_size / block_size;
+			const Iterator local_begin = begin + i * merged_size;
 
-			for (Int u = 1; u < bk; ++u)
+			for (Int j = 1; j < count; ++j)
 			{
-				const Int p0 = u - 1;
-				Int p = p0;
-				for (Int v = u; v < bk; ++v)
+				const Int target_0 = j - 1;
+				Int target = target_0;
+				for (Int v = j; v < count; ++v)
 				{
-					const auto cmp = compare(*(begin2 + p * block_size), *(begin2 + v * block_size));
-					if (cmp > 0 || (cmp == 0 && *(keys + p) > * (keys + v)))
-						p = v;
+					const auto cmp = compare(*(local_begin + target * block_size), *(local_begin + v * block_size));
+					if (cmp > 0 || (cmp == 0 && *(keys + target) > * (keys + v)))
+						target = v;
 				}
 
-				if (p != p0)
+				if (target != target_0)
 				{
-					block_swap(begin2 + p0 * block_size, begin2 + p * block_size, block_size);
-					swap(*(keys + p0), *(keys + p));
-					if (median == p0 || median == p)
-						median ^= p0 ^ p;
+					block_swap(local_begin + target_0 * block_size, local_begin + target * block_size, block_size);
+					swap(*(keys + target_0), *(keys + target));
+					if (median == target_0 || median == target)
+						median ^= target_0 ^ target;
 				}
 			}
 
 			Int bk2 = 0;
-			const Int last = flag ? lrest % block_size : 0;
+			const Int last = flag ? rest % block_size : 0;
 
 			if (last != 0)
 			{
-				while (bk2 < bk && *(begin2 + bk * block_size) < *(begin2 + (bk - bk2 - 1) * block_size))
+				while (bk2 < count && *(local_begin + count * block_size) < *(local_begin + (count - bk2 - 1) * block_size))
 					++bk2;
 			}
 
 			if (external_buffer != nil_iterator)
 			{
-				merge_buffers_forward_using_external_buffer(begin2, keys, keys + median, bk - bk2, block_size, bk2, last);
+				merge_buffers_forward_using_external_buffer(local_begin, keys, keys + median, count - bk2, block_size, bk2, last);
 			}
 			else
 			{
-				merge_buffers_forward(begin2, keys, keys + median, bk - bk2, block_size, has_buffer, bk2, last);
+				merge_buffers_forward(local_begin, keys, keys + median, count - bk2, block_size, has_buffer, bk2, last);
 			}
 		}
 
@@ -678,18 +677,18 @@ namespace grail_sort::detail
 
 		for (Int block_size = 2; block_size < size;)
 		{
-			const Int next = block_size * 2;
-			Int p0 = 0;
-			for (Int p1 = size - next; p0 <= p1; p0 += next)
-				merge_inplace(begin + p0, block_size, block_size);
-			const Int rest = size - p0;
+			const Int step_size = block_size * 2;
+			Int left_offset = 0;
+			for (Int p1 = size - step_size; left_offset <= p1; left_offset += step_size)
+				merge_inplace(begin + left_offset, block_size, block_size);
+			const Int rest = size - left_offset;
 			if (rest > block_size)
-				merge_inplace(begin + p0, block_size, rest - block_size);
-			block_size = next;
+				merge_inplace(begin + left_offset, block_size, rest - block_size);
+			block_size = step_size;
 		}
 	}
 
-	template <typename Iterator, typename Int>
+	template <typename Iterator, typename Int, bool DisableExternalBuffer>
 	constexpr void entry_point(Iterator begin, Int size, Iterator external_buffer, Int external_buffer_size) GRAILSORT_NOTHROW
 	{
 		if (size < 16)
@@ -697,6 +696,8 @@ namespace grail_sort::detail
 			insertion_sort_stable(begin, size);
 			return;
 		}
+
+		const auto nil_iterator = Iterator();
 
 		Int block_size = 4;
 		while (block_size * block_size < size)
@@ -731,12 +732,11 @@ namespace grail_sort::detail
 
 		if (has_buffer)
 		{
-			build_blocks(values, range, internal_buffer_size, external_buffer, external_buffer_size);
+			build_blocks<Iterator, Int, true>(values, range, internal_buffer_size, external_buffer, external_buffer_size);
 		}
 		else
 		{
-			const auto nil_iterator = Iterator();
-			build_blocks(values, range, internal_buffer_size, nil_iterator, 0);
+			build_blocks<Iterator, Int, false>(values, range, internal_buffer_size, nil_iterator, 0);
 		}
 
 		while (true)
@@ -745,38 +745,41 @@ namespace grail_sort::detail
 			if (internal_buffer_size >= range)
 				break;
 
-			Int b2 = block_size;
-			bool has_buffer2 = has_buffer;
-			if (!has_buffer2)
+			Int local_block_size = block_size;
+			bool local_has_buffer = has_buffer;
+			if (!local_has_buffer)
 			{
 				if (key_count > 4 && key_count / 8 * key_count >= internal_buffer_size)
 				{
-					b2 = key_count / 2;
-					has_buffer2 = true;
+					local_block_size = key_count / 2;
+					local_has_buffer = true;
 				}
 				else
 				{
-					Int nk = 1;
-					intmax_t s = (intmax_t)internal_buffer_size * key_count / 2;
-					while (nk < key_count && s != 0)
-					{
-						nk *= 2;
-						s /= 8;
-					}
-					b2 = (2 * internal_buffer_size) / nk;
+					Int local_range_size = 1;
+					for (intmax_t s = (intmax_t)internal_buffer_size * key_count / 2; local_range_size < key_count && s != 0; s /= 8)
+						local_range_size *= 2;
+					local_block_size = (2 * internal_buffer_size) / local_range_size;
 				}
 			}
 			else
 			{
-				if (external_buffer_size != 0)
+				if constexpr (!DisableExternalBuffer)
 				{
-					while (b2 > external_buffer_size && b2 * b2 > 2 * internal_buffer_size)
-						b2 /= 2;
+					if (external_buffer_size != 0)
+					{
+						while (local_block_size > external_buffer_size && local_block_size * local_block_size > 2 * internal_buffer_size)
+							local_block_size /= 2;
+					}
 				}
 			}
 
-			const Iterator buffer_iterator = has_buffer2 && b2 <= external_buffer_size ? Iterator() : external_buffer;
-			combine_blocks(values, begin, range, internal_buffer_size, b2, has_buffer2, buffer_iterator);
+			const Iterator buffer_iterator =
+				DisableExternalBuffer || local_has_buffer && (local_block_size <= external_buffer_size) ?
+					nil_iterator : 
+					external_buffer;
+
+			combine_blocks(values, begin, range, internal_buffer_size, local_block_size, local_has_buffer, buffer_iterator);
 		}
 
 		insertion_sort_unstable(begin, offset); //All items are unique, stability isn't required.

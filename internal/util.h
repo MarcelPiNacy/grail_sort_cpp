@@ -66,14 +66,14 @@ namespace grail_sort::detail
 		std::swap(left, right);
 	}
 
-	template <typename Iterator, typename UInt>
-	constexpr void block_move(Iterator to, Iterator from, UInt count) GRAILSORT_NOTHROW
+	template <typename Iterator, typename Int>
+	constexpr void block_move(Iterator to, Iterator from, Int count) GRAILSORT_NOTHROW
 	{
 		std::move(from, from + count, to);
 	}
 
-	template <typename Iterator, typename UInt>
-	constexpr void block_swap(Iterator left, Iterator right, UInt size) GRAILSORT_NOTHROW
+	template <typename Iterator, typename Int>
+	constexpr void block_swap(Iterator left, Iterator right, Int size) GRAILSORT_NOTHROW
 	{
 		const auto left_end = left + size;
 		while (left != left_end)
@@ -84,9 +84,30 @@ namespace grail_sort::detail
 		}
 	}
 
-	template <typename Iterator, typename UInt>
-	constexpr void rotate(Iterator begin, UInt left_size, UInt right_size) GRAILSORT_NOTHROW
+	template <typename Iterator, typename Int>
+	constexpr void rotate_single(Iterator begin, Int left_size) GRAILSORT_NOTHROW
 	{
+		while (left_size != 0)
+		{
+			if (left_size <= 1)
+			{
+				block_swap(begin, begin + left_size, left_size);
+				begin += left_size;
+				return;
+			}
+			else
+			{
+				swap(*(begin + (left_size - 1)), *(begin + left_size));
+				--left_size;
+			}
+		}
+	}
+
+	template <typename Iterator, typename Int>
+	constexpr void rotate(Iterator begin, Int left_size, Int right_size) GRAILSORT_NOTHROW
+	{
+		GRAILSORT_ASSUME(left_size >= 0);
+		GRAILSORT_ASSUME(right_size >= 0);
 		while (left_size != 0 && right_size != 0)
 		{
 			if (left_size <= right_size)
@@ -103,14 +124,14 @@ namespace grail_sort::detail
 		}
 	}
 
-	template <typename Iterator, typename UInt>
-	constexpr UInt lower_bound(Iterator begin, UInt size, const Iterator key) GRAILSORT_NOTHROW
+	template <typename Iterator, typename Int>
+	constexpr Int lower_bound(Iterator begin, Int size, const Iterator key) GRAILSORT_NOTHROW
 	{
-		UInt low = 0;
-		UInt high = size;
+		Int low = 0;
+		Int high = size;
 		while (low < high)
 		{
-			const UInt p = low + (high - low) / 2;
+			const Int p = low + (high - low) / 2;
 			const bool flag = *(begin + p) >= *key;
 
 			if (flag)
@@ -121,14 +142,14 @@ namespace grail_sort::detail
 		return high;
 	}
 
-	template <typename Iterator, typename UInt>
-	constexpr UInt upper_bound(Iterator begin, UInt size, const Iterator key) GRAILSORT_NOTHROW
+	template <typename Iterator, typename Int>
+	constexpr Int upper_bound(Iterator begin, Int size, const Iterator key) GRAILSORT_NOTHROW
 	{
-		UInt low = 0;
-		UInt high = size;
+		Int low = 0;
+		Int high = size;
 		while (low < high)
 		{
-			const UInt p = low + (high - low) / 2;
+			const Int p = low + (high - low) / 2;
 			const bool flag = *(begin + p) > * key;
 
 			if (flag)
