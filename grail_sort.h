@@ -567,8 +567,3 @@ namespace grailsort
 		state.grail_sort_external(begin, end, external_buffer_begin, external_buffer_end);
 	}
 }
-
-void grail_sort_cpp(main_array array)
-{
-	grailsort::sort(array.begin(), array.end());
-}
